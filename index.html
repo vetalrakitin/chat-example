@@ -25,7 +25,7 @@
       $(function () {
         function printMsg(msg)
         {
-          $('#messages').append($('<li>').text(msg.text));
+          $('#messages').append($('<li>').text((msg.user || 'somebody')+': ' + msg.text));
         }
         
         var socket = io();
@@ -37,7 +37,14 @@
         });
 
         socket.on('load old message', function(data){
+          $('#messages').html('');
           data.map(function(item){printMsg(item)});
+        });
+
+        socket.on('login need', function(){
+          var name = prompt('Please enter your nickname');
+          if (!!name)
+            socket.emit('login', name);
         });
 
         socket.on('chat message', function(msg){

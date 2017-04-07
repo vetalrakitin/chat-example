@@ -27,8 +27,15 @@ MongoClient.connect(db.url, (err, database) => {
 		});
 
 		socket.on('chat message', function(msg) {
+			if (!socket.user)
+			{
+				socket.emit('login need', {});
+				console.log('user has no name');
+				return false;
+			}
 			record = {
-				text: msg
+				text: msg,
+				user: socket.user
 			};
 			database.collection('messages').insert(record, (err, result) => {
 				if (err) {
@@ -37,6 +44,12 @@ MongoClient.connect(db.url, (err, database) => {
 					io.emit('chat message', result.ops[0]);
 				}
 			});
+		});
+		
+		socket.emit('login need', {});
+
+		socket.on('login', function(name) {
+			socket.user = name.trim();
 		});
 	});
 
