@@ -1,18 +1,47 @@
+// Mongo
+const MongoClient = require('mongodb').MongoClient;
+const db = require('./config/db');
+
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 3000;
+var record = {};
 
-app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
-});
+// Mongo connect
+MongoClient.connect(db.url, (err, database) => {
+	if (err)
+		return console.log(err)
 
-io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    io.emit('chat message', msg);
-  });
-});
+	// Routing
+	app.get('/', function(req, res) {
+		res.sendFile(__dirname + '/index.html');
+	});
 
-http.listen(port, function(){
-  console.log('listening on *:' + port);
+	//Socket
+	io.on('connection', function(socket) {
+		// Load 20 recent messages for connected user
+		var lastRecord = database.collection('messages').find().sort({$natural:-1}).limit(20);
+		lastRecord.toArray().then(function(data){			
+			socket.emit('load old message', data.reverse());
+		});
+
+		socket.on('chat message', function(msg) {
+			record = {
+				text: msg
+			};
+			database.collection('messages').insert(record, (err, result) => {
+				if (err) {
+					console.log('An error has occurred');
+				} else {
+					io.emit('chat message', result.ops[0]);
+				}
+			});
+		});
+	});
+
+	// Http
+	http.listen(port, function() {
+		console.log('listening on *:' + port);
+	});
 });
